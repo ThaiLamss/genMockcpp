@@ -21,6 +21,7 @@ QString extractArgs(const QString& methodSignature);
 QStringList parseArgs(const QString& args);
 QString genMockClass(const QString& functionName, const QString& returnType, const QStringList& args);
 FunctionInfo parseFunction(const QString& functionSignature);
+QString parseClassContent(const QString& fileContent, const QString& className);
 
 int main(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
@@ -44,7 +45,6 @@ int main(int argc, char* argv[]) {
 
     // Tìm tất cả các class được định nghĩa trong file .h
     QStringList classNames = extractClassNames(headerContent);
-
     // Tạo các mock class và ghi vào file .h đầu ra
     QFile outputFile(outputFileName);
     if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -54,8 +54,10 @@ int main(int argc, char* argv[]) {
 
     QTextStream out(&outputFile);
     for (const QString& className : classNames) {
-        QString classContent = headerContent;
-        classContent = classContent.mid(classContent.indexOf("class " + className));
+        QString classContent = parseClassContent(headerContent,className);
+        qDebug() << className<< classContent;
+        qDebug() << classContent;
+//        classContent = classContent.mid(classContent.indexOf("class " + className));
 
         QString mockClass = generateMockClass(className, classContent);
         out << mockClass << "\n";
@@ -68,14 +70,45 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
+QString parseClassContent(const QString& fileContent, const QString& className) {
+    QString classContent;
+    QRegularExpression classRegex(R"(class\s+)" + className + R"(\s*{)");
+
+    QRegularExpressionMatch match = classRegex.match(fileContent);
+    if (match.hasMatch()) {
+        int startPos = match.capturedEnd();
+        int endPos = startPos;
+        int openBrackets = 1;
+
+        while (endPos < fileContent.length() && openBrackets > 0) {
+            QChar currentChar = fileContent.at(endPos);
+
+            if (currentChar == '{') {
+                openBrackets++;
+            } else if (currentChar == '}') {
+                openBrackets--;
+            }
+
+            endPos++;
+        }
+
+        if (openBrackets == 0) {
+            classContent = fileContent.mid(startPos, endPos - startPos - 1).trimmed();
+        }
+    }
+
+    return classContent;
+}
+
 QStringList extractClassNames(const QString& headerContent) {
-    QRegularExpression classRegex(R"(class\s+(\w+)\s*{)");
+    QRegularExpression classRegex(R"(class\s+(\w+)\s*[:{])");
     QRegularExpressionMatchIterator regexIterator = classRegex.globalMatch(headerContent);
 
     QStringList classNames;
     while (regexIterator.hasNext()) {
         QRegularExpressionMatch match = regexIterator.next();
-        classNames.append(match.captured(1));
+        QString className = match.captured(1).trimmed();
+        classNames.append(className);
     }
 
     return classNames;
@@ -85,7 +118,7 @@ QString generateMockClass(const QString& className, const QString& classContent)
     QString mockClass;
     mockClass += "#include <gmock/gmock.h>\n";
     mockClass += QString("class Mock%1 : public %1{\n").arg(className);
-    qDebug() << className << classContent;
+//    qDebug() << className << classContent;
     // Thêm các phương thức của class gốc dưới dạng ảo và trả về giá trị mặc định
     mockClass += "public:\n";
 
@@ -98,7 +131,7 @@ QString generateMockClass(const QString& className, const QString& classContent)
             if (!funcInfo.name.isEmpty() && !funcInfo.returnType.isEmpty()) {
                 // Thêm mock method tương ứng
                 mockClass += genMockClass(funcInfo.name,funcInfo.returnType,funcInfo.args);
-                qDebug() <<genMockClass(funcInfo.name,funcInfo.returnType,funcInfo.args);
+//                qDebug() <<genMockClass(funcInfo.name,funcInfo.returnType,funcInfo.args);
             }
         }
 
@@ -129,7 +162,7 @@ QStringList extractMethodSignature(const QString& className, const QString& clas
     qDebug() ;
     QStringList methodSignatures;
     QStringList delimiters = {";", "}", ":"};
-    int startPos = classContent.indexOf(className);
+    int startPos = 0;
 
     while (startPos < classContent.length()) {
         // Tìm vị trí kết thúc của các đoạn dựa trên các ký hiệu ";", "}", ":"

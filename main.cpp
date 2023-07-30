@@ -94,16 +94,11 @@ QString generateMockClass(const QString& className, const QString& classContent)
 
         //        qInfo() << methodSignature;
         if (!methodSignature.isEmpty()) {
-            QString functionName = extractFunctionName(methodSignature);
-            QString returnType = extractReturnType(methodSignature);
-            QString arg = extractArgs(methodSignature);
-            QStringList args = parseArgs(arg);
-            qInfo() << functionName << returnType << args;
-            if (!functionName.isEmpty() && !returnType.isEmpty()) {
+            FunctionInfo funcInfo = parseFunction(methodSignature);
+            if (!funcInfo.name.isEmpty() && !funcInfo.returnType.isEmpty()) {
                 // Thêm mock method tương ứng
-                mockClass += genMockClass(functionName,returnType,args);
-                qDebug() <<genMockClass(functionName,returnType,args);
-                //                mockClass += "    MOCK_METHOD" + QString::number(returnType == "void" ? 1 : 2) + "(" + functionName + ", " + args + ");\n";
+                mockClass += genMockClass(funcInfo.name,funcInfo.returnType,funcInfo.args);
+                qDebug() <<genMockClass(funcInfo.name,funcInfo.returnType,funcInfo.args);
             }
         }
 

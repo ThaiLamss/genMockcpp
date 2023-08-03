@@ -192,11 +192,10 @@ QStringList extractMethodSignature(const QString &className,
 
     // Tìm vị trí kết thúc của các đoạn dựa trên các ký hiệu ";", "}", ":"
     int endPos = filteredClassContent.length();
-    qInfo() << filteredClassContent.mid(startPos);
     for (const QString &delimiter : delimiters) {
       int delimiterPos = filteredClassContent.indexOf(delimiter, startPos);
       if (delimiterPos != -1 && delimiterPos < endPos &&
-          (delimiterPos + 1 < endPos && filteredClassContent[delimiterPos] != ":")) {
+          (delimiterPos + 1 < endPos && filteredClassContent[delimiterPos+1] != ":")) {
         endPos = delimiterPos;
         if (delimiter == "}")
           endPos++;
